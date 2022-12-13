@@ -24,6 +24,19 @@ namespace GAuthenticator.Controllers
         {           
             return View();
         }
+
+        //[Authorize]
+        public ActionResult UserProfile()
+        {
+            //if (Session["Username"] == null || Session["IsValidTwoFactorAuthentication"] == null || !(bool)Session["IsValidTwoFactorAuthentication"])
+            //{
+            //    return RedirectToAction("Login");
+            //}
+            ViewBag.Message = "Welcome to  " + Session["Username"].ToString();
+            return View();
+        }
+
+
         [HttpPost]
         public ActionResult Login(LoginModel login)
         {
@@ -31,7 +44,7 @@ namespace GAuthenticator.Controllers
             bool status = false;
             //check UserName and password form our database here
             string GAuthPrivKey = WebConfigurationManager.AppSettings["GAuthPrivateKey"];
-            string UserUniqueKey = (login.UserName + GAuthPrivKey);
+            string UserUniqueKey = login.UserName + GAuthPrivKey;
             if (login.UserName == "Admin" && login.Password == "12345") // Admin as user name and 12345 as Password
             {
                 status = true;
@@ -79,7 +92,7 @@ namespace GAuthenticator.Controllers
                         TwoFactorAuthenticator TwoFacAuth = new TwoFactorAuthenticator();
 
                         Session["UserUniqueKey"] = UserUniqueKey;
-                        var setupInfo = TwoFacAuth.GenerateSetupCode("HaneefPuttur.com", login.UserName, UserUniqueKey, 300, 300);
+                        var setupInfo = TwoFacAuth.GenerateSetupCode("anirudh.sas@gmail.com", login.UserName, UserUniqueKey, 300, 300);
                         ViewBag.BarcodeImageUrl = setupInfo.QrCodeSetupImageUrl;
                         ViewBag.SetupCode = setupInfo.ManualEntryKey;
                     }
@@ -93,8 +106,7 @@ namespace GAuthenticator.Controllers
                 }
                 
             }
-
-            else
+                        else
             {
                 message = "Please Enter the Valid Credential!";
             }
@@ -102,17 +114,6 @@ namespace GAuthenticator.Controllers
             ViewBag.Status = status;
             return View();
         }
-        [Authorize]
-        public ActionResult UserProfile()
-        {
-            //if (Session["Username"] == null || Session["IsValidTwoFactorAuthentication"] == null || !(bool)Session["IsValidTwoFactorAuthentication"])
-            //{
-            //    return RedirectToAction("Login");
-            //}
-            ViewBag.Message = "Welcome to  " + Session["Username"].ToString();
-            return View();
-        }
-
         public ActionResult TwoFactorAuthenticate()
         {
             var token = Request["CodeDigit"];
@@ -121,12 +122,12 @@ namespace GAuthenticator.Controllers
             bool isValid = TwoFacAuth.ValidateTwoFactorPIN(UserUniqueKey, token);
             if (isValid)
             {
-                HttpCookie TwoFCookie = new HttpCookie("TwoFCookie");
-                string UserCode = Convert.ToBase64String(MachineKey.Protect(Encoding.UTF8.GetBytes(UserUniqueKey)));
+                //HttpCookie TwoFCookie = new HttpCookie("TwoFCookie");
+                //string UserCode = Convert.ToBase64String(MachineKey.Protect(Encoding.UTF8.GetBytes(UserUniqueKey)));
 
-                TwoFCookie.Values.Add("UserCode", UserCode);
-                TwoFCookie.Expires = DateTime.Now.AddDays(30);
-                Response.Cookies.Add(TwoFCookie);
+                //TwoFCookie.Values.Add("UserCode", UserCode);
+                //TwoFCookie.Expires = DateTime.Now.AddDays(30);
+                //Response.Cookies.Add(TwoFCookie);
                 Session["IsValidTwoFactorAuthentication"] = true;
                 return RedirectToAction("UserProfile", "Login");
             }
@@ -134,6 +135,9 @@ namespace GAuthenticator.Controllers
         }
         public ActionResult Logoff()
         {
+            HttpCookie TwoFCookie = Request.Cookies["TwoFCookie"];
+            TwoFCookie.Expires = DateTime.Now.AddDays(-100);
+            Response.Cookies.Add(TwoFCookie);
             Session["UserName"] = null;
             FormsAuthentication.SignOut();
             FormsAuthentication.RedirectToLoginPage();
